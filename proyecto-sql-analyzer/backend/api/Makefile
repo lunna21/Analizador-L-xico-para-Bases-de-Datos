@@ -9,16 +9,13 @@ LEXER_DIR = ../lexer
 DB_DIR = ../database
 BUILD_DIR = ../build
 
-# Añadir esta línea para solucionar errores de directorios
-MKDIR = mkdir -p
-
 # Archivos objeto
 OBJS = $(BUILD_DIR)/server.o $(BUILD_DIR)/lex.yy.o $(BUILD_DIR)/db_manager.o
 
 all: dirs server
 
 dirs:
-	$(MKDIR) $(BUILD_DIR)  # Estos espacios al inicio deben ser tabulaciones
+	if not exist $(BUILD_DIR) mkdir $(BUILD_DIR)
 
 server: $(OBJS)
 	$(CC) $(CFLAGS) -o $(BUILD_DIR)/server $^ $(LDFLAGS)
@@ -36,8 +33,7 @@ $(BUILD_DIR)/db_manager.o: $(DB_DIR)/db_manager.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -f $(BUILD_DIR)/*.o $(BUILD_DIR)/server $(LEXER_DIR)/lex.yy.c
+	-del /F /Q $(BUILD_DIR)\*.o $(BUILD_DIR)\server.exe $(LEXER_DIR)\lex.yy.c 2>nul
 
 run: all
 	$(BUILD_DIR)/server $(BUILD_DIR)/query.txt
-	

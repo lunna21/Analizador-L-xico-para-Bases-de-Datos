@@ -38,6 +38,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const queryResult = document.getElementById('query-result');
     const queryTemplate = document.getElementById('query-template');
 
+    // URL de la API
+    const API_URL = 'http://localhost:3000/api/analyze';
+
     // Cargar campos según la tabla seleccionada
     function loadFields(tableId) {
         fieldsContainer.innerHTML = '';
@@ -105,100 +108,130 @@ document.addEventListener('DOMContentLoaded', function() {
         sqlEditor.value = query;
     }
 
-    // Simulación de análisis léxico
-    function simulateLexicalAnalysis(query) {
-        lexicalAnalysis.innerHTML = '<div class="loading-spinner"></div> Analizando...';
+    // Mostrar el análisis léxico 
+    function displayLexicalAnalysis(tokens) {
+        let html = '<div class="mb-3"><strong>Tokens encontrados:</strong></div>';
+        html += '<div class="border rounded p-2 mb-3" style="max-height: 250px; overflow-y: auto;">';
         
-        // Definición simple de tokens para la simulación
-        const tokenPatterns = [
-            { type: 'keyword', pattern: /\b(insertar|en|tabla|valores|fin)\b/gi },
-            { type: 'identifier', pattern: /\b[a-zA-Z_][a-zA-Z0-9_]*\b(?!\s*=)/g },
-            { type: 'string', pattern: /'[^']*'|"[^"]*"/g },
-            { type: 'number', pattern: /\b\d+(\.\d+)?\b/g },
-            { type: 'boolean', pattern: /\b(verdadero|falso|true|false)\b/gi },
-            { type: 'operator', pattern: /[=,:;]/g }
-        ];
+        let currentLine = 1;
+        let lineTokens = [];
         
-        // Simulación - tiempo para "procesar"
-        setTimeout(() => {
-            let html = '<div class="mb-3"><strong>Tokens encontrados:</strong></div>';
-            html += '<div class="border rounded p-2 mb-3" style="max-height: 250px; overflow-y: auto;">';
-            
-            let tokenCount = 0;
-            let currentLine = 1;
-            
-            // Dividir por líneas
-            const lines = query.split('\n');
-            
-            lines.forEach((line, lineIndex) => {
-                html += `<div class="mb-2"><small class="text-muted">Línea ${lineIndex + 1}:</small> `;
-                
-                // Encontrar tokens en cada línea
-                for (const { type, pattern } of tokenPatterns) {
-                    const matches = line.match(pattern) || [];
-                    matches.forEach(match => {
-                        const cleanMatch = match.trim();
-                        if (cleanMatch) {
-                            html += `<span class="token token-${type}" 
-                                     title="Token #${tokenCount}: ${type.toUpperCase()}">${cleanMatch}</span>`;
-                            tokenCount++;
-                        }
+        // Agrupar tokens por línea
+        tokens.forEach(token => {
+            if (token.line > currentLine) {
+                // Renderizar tokens de la línea anterior
+                if (lineTokens.length > 0) {
+                    html += `<div class="mb-2"><small class="text-muted">Línea ${currentLine}:</small> `;
+                    lineTokens.forEach(t => {
+                        const tokenType = getTokenType(t.type);
+                        html += `<span class="token token-${tokenType}" 
+                                 title="Token: ${t.type}">${t.lexeme}</span>`;
                     });
+                    html += '</div>';
+                    lineTokens = [];
                 }
-                
-                html += '</div>';
+                currentLine = token.line;
+            }
+            
+            lineTokens.push(token);
+        });
+        
+        // Renderizar la última línea
+        if (lineTokens.length > 0) {
+            html += `<div class="mb-2"><small class="text-muted">Línea ${currentLine}:</small> `;
+            lineTokens.forEach(t => {
+                const tokenType = getTokenType(t.type);
+                html += `<span class="token token-${tokenType}" 
+                         title="Token: ${t.type}">${t.lexeme}</span>`;
             });
-            
             html += '</div>';
-            html += `<div><strong>Total de tokens:</strong> ${tokenCount}</div>`;
-            
-            lexicalAnalysis.innerHTML = html;
-        }, 800);
+        }
+        
+        html += '</div>';
+        html += `<div><strong>Total de tokens:</strong> ${tokens.length}</div>`;
+        
+        lexicalAnalysis.innerHTML = html;
+    }
+    
+    // Mapear tipos de tokens a categorías CSS
+    function getTokenType(type) {
+        if (type.includes('KEYWORD')) return 'keyword';
+        if (type === 'IDENTIFIER') return 'identifier';
+        if (type === 'STRING') return 'string';
+        if (type === 'NUMBER') return 'number';
+        if (type === 'BOOLEAN') return 'boolean';
+        if (['COLON', 'COMMA', 'EQUALS', 'SEMICOLON'].includes(type)) return 'operator';
+        if (type === 'ERROR') return 'error';
+        return 'other';
     }
 
-    // Simulación de ejecución de consulta
-    function simulateQueryExecution(query) {
-        queryResult.innerHTML = '<div class="loading-spinner"></div> Ejecutando...';
+    // Mostrar resultados de la consulta
+    function displayQueryResult(result) {
+        if (result.success) {
+            queryResult.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle-fill me-2"></i>
+                    Consulta procesada correctamente
+                </div>
+                <div class="mb-2">
+                    <strong>Consulta SQL ejecutada:</strong>
+                </div>
+                <pre class="bg-dark text-light p-2 rounded">${result.sqlQuery}</pre>
+                <div class="mt-3">
+                    <strong>Resultado:</strong> 1 fila insertada
+                </div>
+            `;
+        } else {
+            queryResult.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Error al procesar la consulta
+                </div>
+                <div class="mb-2">
+                    <strong>Detalles del error:</strong>
+                </div>
+                <pre class="bg-dark text-light p-2 rounded">${result.stderr || result.error || 'Error desconocido'}</pre>
+            `;
+        }
+    }
+    
+    // Ejecutar consulta contra la API
+    async function executeQuery(query) {
+        lexicalAnalysis.innerHTML = '<div class="d-flex justify-content-center my-4"><div class="loading-spinner"></div> Analizando...</div>';
+        queryResult.innerHTML = '<div class="d-flex justify-content-center my-4"><div class="loading-spinner"></div> Ejecutando...</div>';
         
-        setTimeout(() => {
-            // Verificar si es una consulta de inserción
-            if (/insertar\s+en\s+tabla\s+\w+\s+valores/i.test(query)) {
-                const tableMatch = query.match(/tabla\s+(\w+)/i);
-                const table = tableMatch ? tableMatch[1] : 'desconocida';
-                
-                // Construir SQL simulado
-                let sqlQuery = '';
-                if (table === 'usuarios') {
-                    sqlQuery = "INSERT INTO usuarios (nombre, edad, email, activo) VALUES ('...', ..., '...', ...)";
-                } else if (table === 'productos') {
-                    sqlQuery = "INSERT INTO productos (nombre, precio, stock, disponible) VALUES ('...', ..., ..., ...)";
-                } else if (table === 'pedidos') {
-                    sqlQuery = "INSERT INTO pedidos (usuario_id, fecha, total, completado) VALUES (..., '...', ..., ...)";
-                }
-                
-                queryResult.innerHTML = `
-                    <div class="alert alert-success">
-                        <i class="bi bi-check-circle-fill me-2"></i>
-                        Consulta procesada correctamente
-                    </div>
-                    <div class="mb-2">
-                        <strong>Consulta SQL ejecutada:</strong>
-                    </div>
-                    <pre class="bg-dark text-light p-2 rounded">${sqlQuery}</pre>
-                    <div class="mt-3">
-                        <strong>Resultado:</strong> 1 fila insertada en la tabla "${table}"
-                    </div>
-                `;
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query })
+            });
+            
+            const result = await response.json();
+            
+            if (result.tokens) {
+                displayLexicalAnalysis(result.tokens);
             } else {
-                queryResult.innerHTML = `
-                    <div class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        Consulta no reconocida
-                    </div>
-                    <div>Solo se admiten consultas del tipo "insertar en tabla..."</div>
-                `;
+                lexicalAnalysis.innerHTML = '<div class="alert alert-warning">No se encontraron tokens</div>';
             }
-        }, 1500);
+            
+            displayQueryResult(result);
+            
+        } catch (error) {
+            console.error("Error al comunicarse con la API:", error);
+            lexicalAnalysis.innerHTML = '<div class="alert alert-danger">Error al analizar la consulta</div>';
+            queryResult.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    Error de comunicación con el servidor
+                </div>
+                <div>
+                    ${error.message || 'No se pudo conectar con el servidor'}
+                </div>
+            `;
+        }
     }
 
     // Event Listeners
@@ -215,8 +248,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        simulateLexicalAnalysis(query);
-        simulateQueryExecution(query);
+        executeQuery(query);
     });
     
     queryTemplate.addEventListener('change', function() {
