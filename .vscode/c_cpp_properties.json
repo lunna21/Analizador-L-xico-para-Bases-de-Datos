@@ -1,0 +1,22 @@
+{
+  "configurations": [
+    {
+      "name": "Win32",
+      "includePath": [
+        "${workspaceFolder}/backend/database",
+        "${workspaceFolder}/backend/lexer",
+        "${workspaceFolder}/backend/parser",
+        "${workspaceFolder}/backend",
+        "C:/mingw64/include",           // Ruta real a MinGW (ajústala si es distinta)
+        "C:/mingw64/x86_64-w64-mingw32/include",
+        "C:/Program Files/MySQL/MySQL Server 8.0/include" // Solo si usas MySQL directamente
+      ],
+      "defines": [],
+      "compilerPath": "C:/mingw64/bin/gcc.exe",
+      "cStandard": "c11",
+      "cppStandard": "c++17",
+      "intelliSenseMode": "windows-gcc-x64"
+    }
+  ],
+  "version": 4
+}

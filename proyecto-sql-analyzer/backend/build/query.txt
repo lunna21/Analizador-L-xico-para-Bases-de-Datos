@@ -1,0 +1,3 @@
+insertar en tabla usuarios valores: nombre = 'Juan', edad = 25, email = 'juan@ejemplo.com', activo = verdadero fin;
+insertar en tabla productos valores: nombre = 'Laptop', precio = 1200, stock = 10, disponible = verdadero fin;
+insertar en tabla pedidos valores: usuario_id = 1, fecha = '2023-06-15', total = 1200, completado = falso fin;
